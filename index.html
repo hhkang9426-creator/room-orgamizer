@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>방 정리 도우미</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f0f; --bg2:#161616; --bg3:#1e1e1e; --bg4:#252525;
+  --bd:rgba(255,255,255,.08); --bd2:rgba(255,255,255,.15);
+  --tx:#f0f0f0; --tx2:#9a9a9a; --tx3:#4a4a4a;
+  --g:#4ade80; --gd:rgba(74,222,128,.12); --gd2:rgba(74,222,128,.06);
+  --b:#60a5fa; --bd-b:rgba(96,165,250,.12);
+  --o:#fb923c; --od:rgba(251,146,60,.12);
+  --r:#f87171; --rd:rgba(248,113,113,.12);
+  --y:#fbbf24;
+  --rad:14px; --rads:8px;
+  --font:'Noto Sans KR',sans-serif;
+  --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#000}
+body{font-family:var(--font);color:var(--tx)}
+
+/* ── 앱 레이아웃 ── */
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;background:var(--bg)}
+.hd{height:62px;display:flex;align-items:flex-end;padding:0 18px 13px;border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--bg)}
+.hd h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.hd p{font-size:11px;color:var(--tx2);margin-top:2px}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.screen{display:none;padding:14px 14px 28px;animation:fi .2s ease}
+.screen.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── 탭바 ── */
+.tabbar{height:68px;display:flex;background:var(--bg2);border-top:1px solid var(--bd);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;transition:opacity .15s}
+.tab:active{opacity:.7}
+.tab-ic{width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.tab-ic svg{width:22px;height:22px;fill:none;stroke:var(--tx3);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.tab span{font-size:10px;color:var(--tx3);font-weight:500;transition:color .2s}
+.tab.on .tab-ic svg{stroke:var(--g)}
+.tab.on span{color:var(--g)}
+.tbadge{position:absolute;top:8px;right:calc(50% - 17px);width:7px;height:7px;border-radius:50%;background:var(--g);border:2px solid var(--bg2);display:none}
+.tbadge.on{display:block}
+
+/* ── 카드 ── */
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--rad);padding:14px;margin-bottom:11px}
+.ctitle{font-size:10px;font-weight:500;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:11px}
+
+/* ── 버튼 ── */
+.btn{width:100%;padding:12px 14px;border-radius:var(--rads);border:1px solid var(--bd2);font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;background:var(--bg3);color:var(--tx);display:flex;align-items:center;justify-content:center;gap:7px;transition:all .14s;margin-top:9px}
+.btn:active{transform:scale(.98)}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.btn-p{background:var(--g);color:#061206;border-color:var(--g);font-weight:700}
+.btn-p svg{stroke:#061206}
+.btn-p:hover{background:#22c55e}
+.btn-b{background:var(--bd-b);color:var(--b);border-color:rgba(96,165,250,.3)}
+.btn-b svg{stroke:var(--b)}
+.btn-ghost{background:transparent;border-color:var(--bd);color:var(--tx2);font-size:12px}
+.btn-sm{padding:9px 12px;font-size:12px;margin-top:0}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.btn-row .btn{margin-top:0}
+
+/* ── 업로드존 ── */
+.upzone{border:1.5px dashed var(--bd2);border-radius:var(--rad);padding:36px 18px;text-align:center;cursor:pointer;background:var(--bg2);transition:all .2s}
+.upzone:hover,.upzone:active{border-color:var(--g);background:var(--gd2)}
+.upzone-ic{width:52px;height:52px;background:var(--gd);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 13px}
+.upzone-ic svg{width:24px;height:24px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.upzone h3{font-size:15px;font-weight:500;margin-bottom:5px}
+.upzone p{font-size:12px;color:var(--tx2);line-height:1.5}
+
+/* ── API 키 카드 ── */
+.api-card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--rad);padding:14px;margin-bottom:11px}
+.api-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.mode-dot{width:8px;height:8px;border-radius:50%;background:var(--o);flex-shrink:0;transition:background .3s}
+.mode-dot.real{background:var(--g)}
+.mode-lbl{font-size:12px;font-weight:500;color:var(--tx2);transition:color .2s}
+.api-input-row label{font-size:11px;color:var(--tx2);display:block;margin-bottom:5px}
+.api-input-row input{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--bd2);border-radius:var(--rads);font-size:12px;font-family:var(--mono);color:var(--tx);outline:none;transition:border-color .2s}
+.api-input-row input:focus{border-color:var(--g)}
+.api-input-row input::placeholder{color:var(--tx3)}
+.api-notice{margin-top:8px;padding:9px 11px;border-radius:var(--rads);font-size:11px;line-height:1.6;color:var(--tx2)}
+.api-notice.mock{background:var(--bg3)}
+.api-notice.real{background:var(--gd);color:var(--g)}
+.api-notice a{color:var(--b);text-decoration:none}
+
+/* ── 이미지 미리보기 ── */
+.prev-wrap{position:relative;border-radius:var(--rad);overflow:hidden;margin-bottom:11px}
+.prev-wrap img{width:100%;height:210px;object-fit:cover;display:block}
+.prev-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 50%)}
+.prev-lbl{position:absolute;bottom:9px;left:9px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;border:1px solid rgba(255,255,255,.15)}
+.prev-rm{position:absolute;top:9px;right:9px;width:28px;height:28px;background:rgba(0,0,0,.6);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.15)}
+.prev-rm svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+
+/* ── 분석 중 ── */
+.analyzing{text-align:center;padding:52px 20px}
+.spin{width:44px;height:44px;border:3px solid var(--bd2);border-top-color:var(--g);border-radius:50%;animation:rot .8s linear infinite;margin:0 auto 16px}
+@keyframes rot{to{transform:rotate(360deg)}}
+.analyzing p{font-size:14px;font-weight:500}
+.analyzing .astep{font-size:12px;color:var(--g);margin-top:5px;min-height:18px}
+
+/* ── 어노테이션 사진 ── */
+.anno-wrap{position:relative;border-radius:var(--rads);overflow:hidden;background:var(--bg3);line-height:0}
+.anno-wrap img{width:100%;display:block}
+#anno-cv{position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer}
+.anno-hint{font-size:11px;color:var(--tx2);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.anno-hint svg{width:13px;height:13px;stroke:var(--tx2);fill:none;stroke-width:1.5;stroke-linecap:round;flex-shrink:0}
+.mock-warn{padding:9px 12px;background:var(--od);border:1px solid rgba(251,146,60,.3);border-radius:var(--rads);font-size:11px;color:var(--o);margin-bottom:9px;line-height:1.6;display:none}
+.mock-warn.on{display:block}
+.item-det{margin-top:9px;padding:10px 12px;background:var(--bg3);border-radius:var(--rads);border-left:3px solid var(--g);display:none}
+.item-det .dn{font-size:13px;font-weight:500}
+.item-det .dl{font-size:11px;color:var(--tx2);margin-top:3px}
+.item-det .ds{font-size:11px;color:var(--g);margin-top:2px;display:flex;align-items:center;gap:3px}
+.item-det .ds svg{width:9px;height:9px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── 점수 ── */
+.score-row{display:flex;align-items:center;gap:14px}
+.score-n{font-size:48px;font-weight:700;font-family:var(--mono);line-height:1}
+.score-r{flex:1}
+.sbar-bg{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:5px}
+.sbar-fill{height:100%;border-radius:3px;transition:width 1.1s cubic-bezier(.16,1,.3,1)}
+.score-lbl{font-size:11px;color:var(--tx2)}
+.stat-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.schip{font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;font-family:var(--mono)}
+
+/* ── 물건 목록 ── */
+.irow{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer;transition:all .15s;border-radius:0}
+.irow:last-child{border-bottom:none;padding-bottom:0}
+.irow.hl{background:var(--bg4);margin:0 -4px;padding-left:4px;padding-right:4px;border-radius:6px;border-bottom-color:transparent}
+.inum{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;font-family:var(--mono);color:#fff;margin-top:1px}
+.iinfo{flex:1;min-width:0}
+.iname{font-size:13px;font-weight:500}
+.iloc{font-size:11px;color:var(--tx2);margin-top:2px}
+.ireason{font-size:11px;color:var(--tx3);margin-top:1px;font-style:italic}
+.isug{font-size:11px;color:var(--g);display:flex;align-items:center;gap:3px;margin-top:2px}
+.isug svg{width:9px;height:9px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ibadge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;flex-shrink:0;align-self:flex-start;margin-top:1px;font-family:var(--mono)}
+.bh{background:var(--rd);color:var(--r)}.bm{background:var(--od);color:var(--o)}.bl{background:var(--gd);color:var(--g)}
+
+/* ── 우선순위 칩 ── */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.chip::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.ch{background:var(--rd);color:var(--r)}.cm{background:var(--od);color:var(--o)}.cl{background:var(--gd);color:var(--g)}
+
+/* ── 체크리스트 ── */
+.prog-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.prog-hd .bign{font-size:26px;font-weight:700;font-family:var(--mono)}
+.prog-hd .totn{font-size:13px;color:var(--tx2)}
+.prog-hd .pctn{font-size:12px;font-weight:500;font-family:var(--mono);color:var(--g)}
+.prog-track{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:15px}
+.prog-fill{height:100%;background:var(--g);border-radius:2px;transition:width .5s ease}
+.sdiv{font-size:10px;font-weight:500;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px;display:flex;align-items:center;gap:9px;padding:6px 0 7px}
+.sdiv::after{content:'';flex:1;height:1px;background:var(--bd)}
+.cl-item{border:1px solid var(--bd);border-radius:var(--rad);margin-bottom:8px;overflow:hidden;transition:border-color .2s,background .2s}
+.cl-item.done{border-color:rgba(74,222,128,.3);background:var(--gd2)}
+.cl-item.open{border-color:rgba(96,165,250,.4);background:var(--bd-b)}
+.cl-hd{display:flex;align-items:flex-start;gap:11px;padding:12px;cursor:pointer}
+.cl-chk{width:21px;height:21px;border-radius:50%;border:1.5px solid var(--bd2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;transition:all .2s}
+.cl-chk.done{background:var(--g);border-color:var(--g)}
+.cl-chk svg{display:none;width:10px;height:10px;stroke:#061206;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.cl-chk.done svg{display:block}
+.cl-tw{flex:1;min-width:0}
+.cl-task{font-size:13px;font-weight:500;line-height:1.4}
+.cl-task.done{text-decoration:line-through;color:var(--tx3)}
+.cl-meta{font-size:11px;color:var(--tx2);margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.sbadge{font-size:10px;font-weight:500;padding:1px 7px;border-radius:8px}
+.sdone{background:var(--gd);color:var(--g)}.sopen{background:var(--bd-b);color:var(--b)}
+.cl-chev{width:15px;height:15px;stroke:var(--tx3);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;margin-top:3px;transition:transform .2s}
+.cl-item.open .cl-chev{transform:rotate(180deg)}
+.vpanel{display:none;border-top:1px solid var(--bd);padding:12px}
+.cl-item.open .vpanel{display:block}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.vslot{border-radius:var(--rads);overflow:hidden;background:var(--bg3);border:1px dashed var(--bd2);height:112px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;position:relative;transition:border-color .2s}
+.vslot:hover{border-color:var(--g)}
+.vslot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vslot-lbl{position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,.65);font-size:10px;font-weight:500;padding:2px 7px;border-radius:7px;z-index:1;color:#fff}
+.vph{display:flex;flex-direction:column;align-items:center;gap:5px}
+.vph svg{width:22px;height:22px;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.vph span{font-size:11px;color:var(--tx2)}
+.vai{border-radius:var(--rads);padding:10px 12px;margin-bottom:9px;font-size:12px;line-height:1.6;border-left:2.5px solid;display:none}
+.vai.on{display:block}
+.vai.pass{background:var(--gd);border-color:var(--g)}.vai.fail{background:var(--rd);border-color:var(--r)}
+.vai-lbl{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono);margin-bottom:3px}
+.vai.pass .vai-lbl{color:var(--g)}.vai.fail .vai-lbl{color:var(--r)}
+.vai-txt{color:var(--tx2)}
+.vfy-loading{display:flex;align-items:center;gap:9px;padding:12px;background:var(--bg3);border-radius:var(--rads);margin-bottom:9px}
+.vspin{width:15px;height:15px;border:2px solid var(--bd2);border-top-color:var(--g);border-radius:50%;animation:rot .8s linear infinite;flex-shrink:0}
+.vfy-loading span{font-size:12px;color:var(--tx2)}
+
+/* ── 완료 배너 ── */
+.done-banner{border-radius:var(--rad);padding:18px;margin-bottom:14px;background:var(--gd);border:1px solid rgba(74,222,128,.25);text-align:center;display:none}
+.done-banner.on{display:block}
+.done-ic{width:46px;height:46px;background:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.done-ic svg{width:22px;height:22px;stroke:#061206;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.done-banner h2{font-size:17px;font-weight:700;color:var(--g);margin-bottom:4px}
+.done-banner p{font-size:12px;color:var(--tx2);line-height:1.5}
+
+/* ── 비교 슬라이더 ── */
+.cmp-wrap{position:relative;border-radius:var(--rad);overflow:hidden;height:215px;touch-action:none;cursor:ew-resize;border:1px solid var(--bd)}
+.cmp-base{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cmp-ov{position:absolute;top:0;left:0;height:100%;overflow:hidden}
+.cmp-ov img{position:absolute;top:0;left:0;width:480px;height:100%;object-fit:cover}
+.cmp-line{position:absolute;top:0;width:2px;height:100%;background:rgba(255,255,255,.9);transform:translateX(-50%);pointer-events:none}
+.cmp-handle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center}
+.cmp-handle svg{width:16px;height:16px;stroke:#333;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ctag{position:absolute;top:9px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:9px;background:rgba(0,0,0,.55);color:#fff}
+.cmp-slider-input{width:100%;margin-top:9px;accent-color:var(--g)}
+.tc-card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--rad);padding:13px;margin-bottom:10px}
+.tc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.tc-title{font-size:12px;font-weight:500;flex:1;min-width:0;margin-right:8px}
+.tc-ok{font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:var(--gd);color:var(--g);font-family:var(--mono);flex-shrink:0}
+.tc-photos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tc-ph{position:relative;border-radius:var(--rads);overflow:hidden}
+.tc-ph img{width:100%;height:88px;object-fit:cover;display:block}
+.tc-lbl{position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,.65);font-size:10px;font-weight:500;padding:2px 6px;border-radius:6px;color:#fff}
+.tc-note{font-size:11px;color:var(--tx2);margin-top:7px;padding-top:7px;border-top:1px solid var(--bd);line-height:1.5}
+
+/* ── 빈 상태 ── */
+.empty{padding:56px 18px;text-align:center}
+.empty-ic{width:54px;height:54px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.empty-ic svg{width:24px;height:24px;stroke:var(--tx3);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.empty h3{font-size:14px;font-weight:500;margin-bottom:6px}
+.empty p{font-size:12px;color:var(--tx2);line-height:1.6}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 헤더 -->
+  <div class="hd">
+    <div><h1 id="hd-t">방 촬영</h1><p id="hd-s">사진을 선택하고 AI 분석을 시작하세요</p></div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ 촬영 화면 ══ -->
+    <div class="screen active" id="sc-camera">
+      <input type="file" id="fi-main" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="fi-verify" accept="image/*" capture="environment" style="display:none">
+
+      <!-- API 키 카드 -->
+      <div class="api-card">
+        <div class="api-top">
+          <div class="mode-dot" id="mdot"></div>
+          <span class="mode-lbl" id="mlbl">목업 모드 — 박스 위치가 실제 사진과 다릅니다</span>
+        </div>
+        <div class="api-input-row">
+          <label>Anthropic API 키 (입력 시 실제 Claude Vision 분석)</label>
+          <input type="password" id="api-in" placeholder="sk-ant-api03-..." autocomplete="off">
+        </div>
+        <div class="api-notice mock" id="api-notice-mock">
+          지금은 <b style="color:var(--o)">목업 모드</b>입니다. 물건 박스 위치는 가짜 데이터라 업로드한 사진과 맞지 않아요.<br>
+          실제 분석: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> 가입 → API Keys → 무료 키 발급
+        </div>
+        <div class="api-notice real" id="api-notice-real" style="display:none">
+          ✓ Claude Vision이 사진을 직접 보고 실제 물건 위치에 박스를 그립니다.
+        </div>
+      </div>
+
+      <!-- 업로드존 -->
+      <div id="z-upload" class="upzone" onclick="document.getElementById('fi-main').click()">
+        <div class="upzone-ic">
+          <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="3"/><circle cx="12" cy="14" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>
+        </div>
+        <h3>방 사진 선택하기</h3>
+        <p>카메라로 촬영하거나<br>갤러리에서 선택하세요</p>
+      </div>
+
+      <!-- 이미지 미리보기 -->
+      <div id="z-preview" style="display:none">
+        <div class="prev-wrap">
+          <img id="prev-img" src="" alt="">
+          <div class="prev-grad"></div>
+          <span class="prev-lbl">선택된 사진</span>
+          <div class="prev-rm" onclick="clearPhoto()">
+            <svg viewBox="0 0 14 14"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost btn-sm" onclick="setBeforePhoto()">
+            <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2"/><circle cx="8" cy="8" r="2.5"/></svg>
+            정리 전 사진으로
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fi-main').click()">
+            <svg viewBox="0 0 16 16"><path d="M8 3v8M4 7l4-4 4 4"/></svg>
+            다른 사진 선택
+          </button>
+        </div>
+        <button class="btn btn-p" onclick="startAnalysis()" id="btn-analyze">
+          <svg viewBox="0 0 16 16"><path d="M8 1L9 5H13L10 7.5L11 11.5L8 9L5 11.5L6 7.5L3 5H7Z"/></svg>
+          <span id="btn-analyze-txt">목업으로 체험하기</span>
+        </button>
+      </div>
+
+      <!-- 분석 중 -->
+      <div id="z-analyzing" class="analyzing" style="display:none">
+        <div class="spin"></div>
+        <p id="atitle">분석 중...</p>
+        <div class="astep" id="astep"></div>
+      </div>
+    </div>
+
+    <!-- ══ 분석 결과 화면 ══ -->
+    <div class="screen" id="sc-result">
+      <div id="re-empty" class="empty">
+        <div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M12 2l2.5 6.5H21l-5.5 4 2 6.5L12 15l-5.5 4 2-6.5L3 8.5h6.5z"/></svg></div>
+        <h3>아직 분석 결과가 없어요</h3>
+        <p>촬영 탭에서 방 사진을 분석해주세요</p>
+      </div>
+      <div id="re-content" style="display:none">
+
+        <!-- 어노테이션 사진 카드 -->
+        <div class="card" style="padding:12px">
+          <div class="ctitle">AI 분석 — 사진 위 물건 위치</div>
+          <div class="mock-warn" id="mock-warn">
+            ⚠️ <b>목업 모드</b> — 박스 위치는 임의 좌표입니다. API 키를 입력하면 Claude가 실제 사진을 보고 정확한 위치에 박스를 그립니다.
+          </div>
+          <div class="anno-hint">
+            <svg viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.5"/><line x1="6.5" y1="5" x2="6.5" y2="9"/><circle cx="6.5" cy="3.5" r=".6" fill="currentColor"/></svg>
+            박스 또는 아래 목록을 탭하면 상세 정보가 표시됩니다
+          </div>
+          <div class="anno-wrap" id="anno-wrap">
+            <img id="anno-img" src="" alt="" style="visibility:hidden">
+            <canvas id="anno-cv"></canvas>
+          </div>
+          <div class="item-det" id="item-det">
+            <div class="dn" id="det-name"></div>
+            <div class="dl" id="det-loc"></div>
+            <div class="ds"><svg viewBox="0 0 9 9"><path d="M2 4.5H7M5 2L7 4.5 5 7"/></svg><span id="det-sug"></span></div>
+          </div>
+        </div>
+
+        <!-- 점수 카드 -->
+        <div class="card">
+          <div class="ctitle">정리 점수</div>
+          <div class="score-row">
+            <div class="score-n" id="re-sn">0</div>
+            <div class="score-r">
+              <div class="sbar-bg"><div class="sbar-fill" id="re-sb" style="width:0%"></div></div>
+              <div class="score-lbl" id="re-sl"></div>
+            </div>
+          </div>
+          <div class="stat-chips" id="re-chips"></div>
+        </div>
+
+        <!-- 요약 카드 -->
+        <div class="card">
+          <div class="ctitle">AI 분석 요약</div>
+          <p style="font-size:13px;line-height:1.75;color:var(--tx2)" id="re-sum"></p>
+        </div>
+
+        <!-- 우선 구역 카드 -->
+        <div class="card" id="re-pri-card" style="display:none">
+          <div class="ctitle">우선 정리 구역</div>
+          <div class="chips" id="re-pri"></div>
+        </div>
+
+        <!-- 물건 목록 카드 -->
+        <div class="card">
+          <div class="ctitle">발견된 물건 목록</div>
+          <div id="re-items"></div>
+        </div>
+
+        <button class="btn btn-p" onclick="switchTab('checklist')">
+          <svg viewBox="0 0 16 16"><path d="M5 8l2 2 5-5"/><rect x="2" y="2" width="12" height="12" rx="2"/></svg>
+          인증 체크리스트로 이동
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ 인증 체크리스트 화면 ══ -->
+    <div class="screen" id="sc-checklist">
+      <div id="cl-empty" class="empty">
+        <div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M9 11l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg></div>
+        <h3>아직 분석 결과가 없어요</h3>
+        <p>촬영 탭에서 방 사진을 분석하면<br>단계별 체크리스트가 생성됩니다</p>
+      </div>
+      <div id="cl-content" style="display:none">
+
+        <!-- 완료 배너 -->
+        <div id="done-banner" class="done-banner">
+          <div class="done-ic"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></div>
+          <h2>정리 완료! 🎉</h2>
+          <p>AI 인증까지 통과했어요.<br>비교 탭에서 결과를 확인하세요.</p>
+          <button class="btn btn-p btn-sm" onclick="switchTab('compare')" style="margin-top:12px;width:auto;padding:9px 20px">전/후 비교 보기 →</button>
+        </div>
+
+        <!-- 50% 달성 시 전체 인증 배너 -->
+        <div id="photo-verify-banner" style="display:none">
+          <div style="background:var(--gd);border:1px solid rgba(74,222,128,.3);border-radius:var(--rad);padding:16px;margin-bottom:11px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <div style="width:36px;height:36px;background:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#061206" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--g)">절반 이상 완료!</div>
+                <div style="font-size:11px;color:var(--tx2);margin-top:1px">지금 방 전체 사진을 찍어 한번에 AI 인증을 받으세요</div>
+              </div>
+            </div>
+            <!-- 전체 인증 사진 영역 -->
+            <div id="whole-verify-slot" style="border-radius:var(--rads);overflow:hidden;background:var(--bg3);border:1px dashed rgba(74,222,128,.4);height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;position:relative;margin-bottom:10px" onclick="openWholeVerify()">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="3"/><circle cx="12" cy="14" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>
+              <span style="font-size:12px;color:var(--g);font-weight:500">방 전체 사진 찍기</span>
+              <span style="font-size:11px;color:var(--tx2)">체크된 항목들이 완료됐는지 AI가 확인합니다</span>
+            </div>
+            <!-- 전체 인증 결과 -->
+            <div id="whole-verify-result" style="display:none"></div>
+            <!-- 전체 인증 로딩 -->
+            <div id="whole-verify-loading" style="display:none;align-items:center;gap:9px;padding:12px;background:var(--bg3);border-radius:var(--rads)">
+              <div class="vspin"></div>
+              <span style="font-size:12px;color:var(--tx2)">방 전체를 AI가 분석하는 중...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 진행도 + 목록 -->
+        <div class="card">
+          <div class="prog-hd">
+            <div><span class="bign" id="cl-dn">0</span><span class="totn" id="cl-tot"> / 0 완료</span></div>
+            <span class="pctn" id="cl-pct">0%</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="cl-fill" style="width:0%"></div></div>
+          <div id="cl-hint" style="font-size:11px;color:var(--tx2);margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:var(--rads)">
+            💡 항목을 체크하며 정리하세요. 50% 이상 완료하면 방 전체 사진으로 한번에 AI 인증을 받을 수 있어요.
+          </div>
+          <div class="sdiv">할 일 목록</div>
+          <div id="cl-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 전/후 비교 화면 ══ -->
+    <div class="screen" id="sc-compare">
+      <div id="cm-empty" class="empty">
+        <div class="empty-ic"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="9" height="16" rx="2"/><rect x="13" y="4" width="9" height="16" rx="2"/></svg></div>
+        <h3>비교할 사진이 없어요</h3>
+        <p>정리 전 사진을 지정하고<br>체크리스트 항목을 인증 완료하면<br>여기서 비교할 수 있어요</p>
+      </div>
+      <div id="cm-content" style="display:none">
+        <div class="card" style="padding:13px">
+          <div class="ctitle">전체 비교 슬라이더</div>
+          <div class="cmp-wrap" id="cmp-wrap">
+            <img class="cmp-base" id="cm-after" src="" alt="후">
+            <div class="cmp-ov" id="cm-ov" style="width:50%"><img id="cm-before" src="" alt="전"></div>
+            <div class="cmp-line" id="cm-line" style="left:50%">
+              <div class="cmp-handle"><svg viewBox="0 0 16 16"><path d="M4 8H2M2 8L4 6M2 8L4 10M12 8H14M14 8L12 6M14 8L12 10"/></svg></div>
+            </div>
+            <span class="ctag" style="left:8px">전</span>
+            <span class="ctag" style="right:8px">후</span>
+          </div>
+          <input type="range" class="cmp-slider-input" id="cm-sl" min="5" max="95" value="50">
+        </div>
+        <div class="sdiv" style="padding:10px 0 8px">항목별 인증 기록</div>
+        <div id="tc-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- 탭바 -->
+  <div class="tabbar">
+    <div class="tab on" id="tab-camera" onclick="switchTab('camera')">
+      <div class="tab-ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="3"/><circle cx="12" cy="14" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg></div>
+      <span>촬영</span><div class="tbadge" id="tb-camera"></div>
+    </div>
+    <div class="tab" id="tab-result" onclick="switchTab('result')">
+      <div class="tab-ic"><svg viewBox="0 0 24 24"><path d="M12 2l2.5 6.5H21l-5.5 4 2 6.5L12 15l-5.5 4 2-6.5L3 8.5h6.5z"/></svg></div>
+      <span>분석결과</span><div class="tbadge" id="tb-result"></div>
+    </div>
+    <div class="tab" id="tab-checklist" onclick="switchTab('checklist')">
+      <div class="tab-ic"><svg viewBox="0 0 24 24"><polyline points="9,11 11,13 15,9"/><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="4" y1="9" x2="20" y2="9"/></svg></div>
+      <span>인증목록</span><div class="tbadge" id="tb-checklist"></div>
+    </div>
+    <div class="tab" id="tab-compare" onclick="switchTab('compare')">
+      <div class="tab-ic"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="9" height="14" rx="2"/><rect x="13" y="5" width="9" height="14" rx="2"/></svg></div>
+      <span>전/후비교</span><div class="tbadge" id="tb-compare"></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════
+//  상태
+// ═══════════════════════════════════════════
+const S = {
+  mainImg: null, beforeImg: null, apiKey: '',
+  analysis: null, tasks: [], isMock: true,
+  activeTaskIdx: -1, verifyTargetIdx: null, selIdx: -1,
+  wholeVerifyDone: false, wholeVerifyImg: null,
+};
+const COLORS = ['#f87171','#fb923c','#fbbf24','#4ade80','#60a5fa','#a78bfa','#f472b6'];
+const HD = {
+  camera:    ['방 촬영',    '사진을 선택하고 AI 분석을 시작하세요'],
+  result:    ['분석 결과',  '박스를 탭해서 물건 정보를 확인하세요'],
+  checklist: ['인증 목록',  '항목 완료 후 사진으로 인증하세요'],
+  compare:   ['전/후 비교', '슬라이더로 정리 전후를 비교하세요'],
+};
+
+// ═══════════════════════════════════════════
+//  탭 전환
+// ═══════════════════════════════════════════
+function switchTab(n) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.getElementById('sc-' + n).classList.add('active');
+  document.getElementById('tab-' + n).classList.add('on');
+  document.getElementById('hd-t').textContent = HD[n][0];
+  document.getElementById('hd-s').textContent = HD[n][1];
+}
+
+// ═══════════════════════════════════════════
+//  API 키
+// ═══════════════════════════════════════════
+document.getElementById('api-in').addEventListener('input', function () {
+  S.apiKey = this.value.trim();
+  const ok = S.apiKey.startsWith('sk-ant');
+  document.getElementById('mdot').className = 'mode-dot' + (ok ? ' real' : '');
+  document.getElementById('mlbl').textContent = ok
+    ? 'Claude Vision 모드 — 사진을 직접 분석합니다'
+    : '목업 모드 — 박스 위치가 실제 사진과 다릅니다';
+  document.getElementById('api-notice-mock').style.display = ok ? 'none' : 'block';
+  document.getElementById('api-notice-real').style.display = ok ? 'block' : 'none';
+  document.getElementById('btn-analyze-txt').textContent = ok ? 'AI 분석 시작 (실제)' : '목업으로 체험하기';
+});
+
+// ═══════════════════════════════════════════
+//  파일 선택
+// ═══════════════════════════════════════════
+document.getElementById('fi-main').addEventListener('change', function (e) {
+  const f = e.target.files[0]; if (!f) return;
+  readImg(f, d => {
+    S.mainImg = d;
+    document.getElementById('prev-img').src = d;
+    document.getElementById('z-upload').style.display = 'none';
+    document.getElementById('z-preview').style.display = 'block';
+  });
+  this.value = '';
+});
+
+document.getElementById('fi-verify').addEventListener('change', function (e) {
+  const f = e.target.files[0]; if (!f) return;
+  readImg(f, d => {
+    // 전체 방 인증 (50% 달성 후)
+    S.wholeVerifyImg = d;
+    runWholeVerify(d);
+  });
+  this.value = '';
+});
+
+function readImg(file, cb) {
+  const r = new FileReader();
+  r.onload = e => cb(e.target.result);
+  r.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  S.mainImg = null;
+  document.getElementById('z-upload').style.display = 'block';
+  document.getElementById('z-preview').style.display = 'none';
+}
+
+function setBeforePhoto() {
+  if (!S.mainImg) return;
+  S.beforeImg = S.mainImg;
+  updateCompare();
+  toast('정리 전 사진으로 저장됐어요');
+}
+
+// ═══════════════════════════════════════════
+//  분석 시작
+// ═══════════════════════════════════════════
+async function startAnalysis() {
+  if (!S.mainImg) return;
+  S.apiKey = document.getElementById('api-in').value.trim();
+  const isReal = S.apiKey.startsWith('sk-ant');
+  S.isMock = !isReal;
+
+  document.getElementById('z-preview').style.display = 'none';
+  document.getElementById('z-analyzing').style.display = 'block';
+
+  const stepEl = document.getElementById('astep');
+  const titleEl = document.getElementById('atitle');
+  titleEl.textContent = isReal ? 'Claude Vision 분석 중...' : '목업 모드로 체험 중...';
+
+  const steps = isReal
+    ? ['이미지 압축 중...', 'Claude Vision 전송 중...', '물건 위치 감지 중...', '좌표 정밀 매핑 중...', '할 일 목록 생성 중...']
+    : ['목업 데이터 로드 중...', '가짜 분석 결과 준비 중...', '임의 박스 좌표 적용 중...'];
+  let si = 0;
+  const stimer = setInterval(() => { si = (si + 1) % steps.length; stepEl.textContent = steps[si]; }, isReal ? 950 : 700);
+
+  try {
+    const a = isReal ? await callClaude(S.mainImg, S.apiKey) : (await delay(1800), getMock());
+    clearInterval(stimer);
+    S.analysis = a;
+    S.tasks = a.checklist.map(t => ({ ...t, done: false, verifyImg: null, aiResult: null, verifying: false }));
+    renderResult(a);
+    renderChecklist();
+    document.getElementById('z-analyzing').style.display = 'none';
+    document.getElementById('z-upload').style.display = 'block';
+    document.getElementById('z-preview').style.display = 'none';
+    document.getElementById('tb-result').classList.add('on');
+    document.getElementById('tb-checklist').classList.add('on');
+    switchTab('result'); // ← 분석 결과가 먼저!
+  } catch (err) {
+    clearInterval(stimer);
+    document.getElementById('z-analyzing').style.display = 'none';
+    document.getElementById('z-preview').style.display = 'block';
+    toast('분석 오류: ' + err.message, true);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  Claude API 호출
+// ═══════════════════════════════════════════
+async function callClaude(imgData, apiKey) {
+  const base64 = imgData.split(',')[1];
+  const mediaType = imgData.split(';')[0].split(':')[1];
+
+  const prompt = `당신은 방 정리 전문가입니다. 이 방 사진을 꼼꼼하게 분석해주세요.
+
+## 물건 감지 (items) 지침
+- 사진에 실제로 보이는 물건만 나열하세요. 보이지 않는 것은 절대 추가 금지.
+- 위치는 구체적으로 (예: "책상 오른쪽 모서리", "바닥 중앙")
+- priority: high = 위생/안전/통행 영향, medium = 공간 방해, low = 미관
+- box 좌표: 이미지 기준 0~100 퍼센트, [왼쪽상단X, 왼쪽상단Y, 오른쪽하단X, 오른쪽하단Y]
+  실제 물건이 있는 정확한 위치를 추정해주세요.
+
+## 점수 기준
+- 85~100: 매우 깔끔 / 60~84: 약간 어질러짐 / 35~59: 꽤 어질러짐 / 0~34: 매우 어질러짐
+
+## 요약
+- 방 상태를 구체적으로 묘사, 왜 그런지 맥락 포함 3문장
+
+아래 JSON 형식으로만 반환 (마크다운 없이):
+{"summary":"방 상태 3문장","score":38,"items":[{"name":"물건명","location":"구체적 위치","suggestedPlace":"수납 위치","priority":"high","reason":"문제 이유","box":[x1,y1,x2,y2]}],"checklist":[{"task":"구체적 할일","area":"구역","minutes":5}],"priorityAreas":["구역1"]}
+items 최대 8개, checklist 최대 10개, 한국어.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: prompt },
+      ]}],
+    }),
+  });
+  if (!res.ok) throw new Error('API 오류 — 키를 확인해주세요');
+  const data = await res.json();
+  const text = data.content[0].text.replace(/```json|```/g, '').trim();
+  return parseClaude(JSON.parse(text));
+}
+
+function parseClaude(j) {
+  const items = (j.items || []).map(i => ({
+    name: i.name, location: i.location || '', suggestedPlace: i.suggestedPlace || '',
+    priority: i.priority || 'medium', reason: i.reason || '',
+    box: Array.isArray(i.box) && i.box.length === 4
+      ? i.box.map(v => Math.min(100, Math.max(0, Number(v))))
+      : null,
+  }));
+  const checklist = (j.checklist || []).map(t => ({ task: t.task, area: t.area || '전체', minutes: t.minutes || 5 }));
+  return {
+    score: Math.min(100, Math.max(0, Number(j.score) || 50)),
+    summary: j.summary || '',
+    items, checklist,
+    priorityAreas: j.priorityAreas || [],
+    totalMin: checklist.reduce((s, t) => s + t.minutes, 0),
+    highCount: items.filter(i => i.priority === 'high').length,
+  };
+}
+
+function getMock() {
+  return {
+    score: 38,
+    summary: '방 전체에 옷가지와 책들이 무작위로 흩어져 있어 공간이 매우 좁아 보입니다. 바닥과 책상 위를 먼저 정리하면 훨씬 쾌적한 환경을 만들 수 있어요. 위생 문제가 될 수 있는 음식물과 컵을 최우선으로 치우는 것이 좋습니다.',
+    items: [
+      { name: '옷가지', location: '의자·바닥', suggestedPlace: '옷장 / 세탁바구니', priority: 'high', reason: '바닥에 흩어져 통행에 방해가 됩니다', box: [5, 55, 35, 88] },
+      { name: '책·교재', location: '책상 위 쌓임', suggestedPlace: '책장에 꽂기', priority: 'high', reason: '책상 공간을 대부분 차지하고 있어요', box: [40, 18, 78, 52] },
+      { name: '음료컵', location: '침대 옆', suggestedPlace: '주방 싱크대', priority: 'high', reason: '침대 옆 컵은 습기와 냄새의 원인입니다', box: [76, 32, 92, 58] },
+      { name: '충전기·케이블', location: '바닥에 엉킴', suggestedPlace: '케이블 정리함', priority: 'medium', reason: '케이블이 엉켜 안전 사고 위험이 있어요', box: [18, 62, 48, 82] },
+      { name: '가방', location: '방문 앞', suggestedPlace: '행거 / 선반', priority: 'medium', reason: '출입구를 막아 불편합니다', box: [2, 28, 22, 65] },
+      { name: '과자봉지', location: '책상·바닥', suggestedPlace: '쓰레기통', priority: 'high', reason: '먹다 남긴 음식물이 냄새와 해충을 유발해요', box: [55, 58, 80, 82] },
+      { name: '화장품', location: '책상 위 흩어짐', suggestedPlace: '화장대 / 파우치', priority: 'low', reason: '사용 후 제자리에 두지 않아 어질러져 보여요', box: [62, 12, 90, 38] },
+    ],
+    checklist: [
+      { task: '음식물·빈 컵 버리기', area: '전체', minutes: 5 },
+      { task: '입을 옷과 세탁물 분류하기', area: '옷장', minutes: 10 },
+      { task: '세탁물 세탁기에 넣기', area: '옷장', minutes: 5 },
+      { task: '책·교재 종류별로 책장에 꽂기', area: '책상', minutes: 15 },
+      { task: '케이블 정리 후 케이블함에 넣기', area: '책상', minutes: 8 },
+      { task: '화장품 파우치에 정리', area: '책상', minutes: 5 },
+      { task: '가방 제자리에 걸기', area: '입구', minutes: 3 },
+      { task: '침대 시트·베개 정돈', area: '침대', minutes: 5 },
+      { task: '바닥 물건 모두 치우기', area: '전체', minutes: 10 },
+      { task: '청소기 또는 물걸레 청소', area: '전체', minutes: 15 },
+    ],
+    priorityAreas: ['책상 위', '바닥 전체', '침대 주변'],
+    totalMin: 81,
+    highCount: 4,
+  };
+}
+
+// ═══════════════════════════════════════════
+//  결과 렌더링
+// ═══════════════════════════════════════════
+function renderResult(a) {
+  document.getElementById('re-empty').style.display = 'none';
+  document.getElementById('re-content').style.display = 'block';
+  document.getElementById('mock-warn').className = 'mock-warn' + (S.isMock ? ' on' : '');
+
+  // 어노테이션 이미지
+  const img = document.getElementById('anno-img');
+  img.src = S.mainImg;
+  img.style.visibility = 'visible';
+  img.onload = () => drawAnnotations(a.items);
+
+  // 점수 애니메이션
+  const bar = document.getElementById('re-sb');
+  const num = document.getElementById('re-sn');
+  const col = a.score >= 75 ? '#4ade80' : a.score >= 50 ? '#fbbf24' : a.score >= 30 ? '#fb923c' : '#f87171';
+  bar.style.background = col;
+  num.style.color = col;
+  let cur = 0;
+  const ti = setInterval(() => {
+    cur = Math.min(cur + 2, a.score);
+    num.textContent = cur;
+    bar.style.width = cur + '%';
+    if (cur >= a.score) clearInterval(ti);
+  }, 16);
+
+  const lbls = [[0,'매우 어질러짐'],[30,'꽤 어질러짐'],[50,'약간 어질러짐'],[75,'거의 깔끔해요'],[90,'매우 깔끔해요']];
+  const lbl = (lbls.slice().reverse().find(([k]) => a.score >= k) || ['','분석 완료'])[1];
+  const h = Math.floor(a.totalMin / 60), m = a.totalMin % 60;
+  const tStr = h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+  document.getElementById('re-sl').textContent = `${lbl} · 발견 ${a.items.length}개 · 예상 ${tStr}`;
+
+  // 통계 칩
+  const chips = [];
+  if (a.highCount > 0) chips.push(`<span class="schip bh">긴급 ${a.highCount}개</span>`);
+  const med = a.items.filter(i => i.priority === 'medium').length;
+  if (med > 0) chips.push(`<span class="schip bm">주의 ${med}개</span>`);
+  const low = a.items.filter(i => i.priority === 'low').length;
+  if (low > 0) chips.push(`<span class="schip bl">낮음 ${low}개</span>`);
+  document.getElementById('re-chips').innerHTML = chips.join('');
+
+  document.getElementById('re-sum').textContent = a.summary;
+
+  // 우선 구역
+  if (a.priorityAreas.length) {
+    document.getElementById('re-pri-card').style.display = 'block';
+    document.getElementById('re-pri').innerHTML = a.priorityAreas.map((z, i) =>
+      `<span class="chip ${['ch','cm','cl'][Math.min(i,2)]}">${z}</span>`).join('');
+  }
+
+  // 물건 목록
+  const pl = { high:'높음', medium:'중간', low:'낮음' };
+  const pb = { high:'bh', medium:'bm', low:'bl' };
+  document.getElementById('re-items').innerHTML = a.items.map((it, i) => `
+    <div class="irow" id="ir-${i}" onclick="selItem(${i})">
+      <div class="inum" style="background:${COLORS[i%COLORS.length]}">${i+1}</div>
+      <div class="iinfo">
+        <div class="iname">${it.name}</div>
+        ${it.location ? `<div class="iloc">📍 ${it.location}</div>` : ''}
+        ${it.reason ? `<div class="ireason">${it.reason}</div>` : ''}
+        ${it.suggestedPlace ? `<div class="isug"><svg viewBox="0 0 9 9"><path d="M2 4.5H7M5 2L7 4.5 5 7"/></svg>${it.suggestedPlace}</div>` : ''}
+      </div>
+      <span class="ibadge ${pb[it.priority]||'bm'}">${pl[it.priority]||'중간'}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+//  Canvas 어노테이션
+// ═══════════════════════════════════════════
+function drawAnnotations(items) {
+  const img = document.getElementById('anno-img');
+  const cv = document.getElementById('anno-cv');
+  if (!img.offsetWidth) return;
+  cv.width = img.offsetWidth;
+  cv.height = img.offsetHeight;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const W = cv.width, H = cv.height;
+
+  // 목업 워터마크
+  if (S.isMock) {
+    ctx.save();
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = 'rgba(251,146,60,0.45)';
+    ctx.textAlign = 'center';
+    ctx.translate(W/2, H/2);
+    ctx.rotate(-Math.PI / 8);
+    for (let ry = -H; ry < H; ry += 88) {
+      for (let rx = -W; rx < W; rx += 180) {
+        ctx.fillText('목업 데이터', rx, ry);
+      }
+    }
+    ctx.restore();
+  }
+
+  items.forEach((item, i) => {
+    if (!item.box) return;
+    const [x1p, y1p, x2p, y2p] = item.box;
+    const x1 = x1p/100*W, y1 = y1p/100*H;
+    const x2 = x2p/100*W, y2 = y2p/100*H;
+    const bw = x2-x1, bh = y2-y1;
+    const col = COLORS[i % COLORS.length];
+    const sel = S.selIdx === i;
+
+    // 박스 채우기
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.globalAlpha = sel ? 0.22 : 0.1;
+    ctx.beginPath(); ctx.roundRect(x1, y1, bw, bh, 4); ctx.fill();
+
+    // 박스 테두리
+    ctx.globalAlpha = sel ? 1 : 0.82;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = sel ? 2.5 : 1.8;
+    ctx.setLineDash(sel ? [] : [5, 3]);
+    ctx.beginPath(); ctx.roundRect(x1, y1, bw, bh, 4); ctx.stroke();
+    ctx.restore();
+
+    // 번호 배지 (좌상단)
+    ctx.save();
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.roundRect(x1+2, y1+2, 20, 20, 4); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(i+1, x1+12, y1+12);
+    ctx.restore();
+
+    // 이름 라벨 (박스 하단)
+    ctx.save();
+    ctx.font = '500 10px sans-serif';
+    const tw = ctx.measureText(item.name).width;
+    const lx = Math.min(x1, W - tw - 14);
+    const ly = Math.min(y2 + 3, H - 18);
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.roundRect(lx, ly, tw+14, 16, 4); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.globalAlpha = 1;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(item.name, lx+7, ly+8);
+    ctx.restore();
+
+    // 선택된 항목 중앙 점
+    if (sel) {
+      const cx = x1+bw/2, cy = y1+bh/2;
+      ctx.save();
+      ctx.fillStyle = col; ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  });
+}
+
+function selItem(idx) {
+  const items = S.analysis ? S.analysis.items : [];
+  S.selIdx = S.selIdx === idx ? -1 : idx;
+  document.querySelectorAll('.irow').forEach((el, i) => el.classList.toggle('hl', i === S.selIdx));
+  const det = document.getElementById('item-det');
+  if (S.selIdx >= 0) {
+    const it = items[S.selIdx];
+    document.getElementById('det-name').textContent = `${S.selIdx+1}. ${it.name}`;
+    document.getElementById('det-loc').textContent = `📍 ${it.location}${it.reason ? ' — ' + it.reason : ''}`;
+    document.getElementById('det-sug').textContent = it.suggestedPlace;
+    det.style.borderColor = COLORS[S.selIdx % COLORS.length];
+    det.style.display = 'block';
+  } else { det.style.display = 'none'; }
+  drawAnnotations(items);
+}
+
+document.getElementById('anno-cv').addEventListener('click', function (e) {
+  const items = S.analysis ? S.analysis.items : []; if (!items.length) return;
+  const rect = this.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / rect.width * 100;
+  const my = (e.clientY - rect.top) / rect.height * 100;
+  for (let i = 0; i < items.length; i++) {
+    const b = items[i].box; if (!b) continue;
+    if (mx >= b[0] && mx <= b[2] && my >= b[1] && my <= b[3]) { selItem(i); return; }
+  }
+  selItem(-1);
+});
+
+if (window.ResizeObserver) {
+  new ResizeObserver(() => {
+    if (S.analysis) {
+      const cv = document.getElementById('anno-cv'), img = document.getElementById('anno-img');
+      if (img.offsetWidth > 0) { cv.width = img.offsetWidth; cv.height = img.offsetHeight; drawAnnotations(S.analysis.items); }
+    }
+  }).observe(document.getElementById('anno-wrap'));
+}
+
+// ═══════════════════════════════════════════
+//  체크리스트
+// ═══════════════════════════════════════════
+function renderChecklist() {
+  if (!S.tasks.length) return;
+  document.getElementById('cl-empty').style.display = 'none';
+  document.getElementById('cl-content').style.display = 'block';
+  refreshCL();
+}
+
+function refreshCL() {
+  const done = S.tasks.filter(t => t.done).length;
+  const total = S.tasks.length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('cl-dn').textContent = done;
+  document.getElementById('cl-tot').textContent = ' / ' + total + ' 완료';
+  document.getElementById('cl-pct').textContent = pct + '%';
+  document.getElementById('cl-fill').style.width = pct + '%';
+
+  // 50% 달성 배너 표시/숨김
+  const banner = document.getElementById('photo-verify-banner');
+  const hint = document.getElementById('cl-hint');
+  if (pct >= 50 && !S.wholeVerifyDone) {
+    banner.style.display = 'block';
+    hint.style.display = 'none';
+  } else if (!S.wholeVerifyDone) {
+    banner.style.display = 'none';
+    hint.style.display = 'block';
+    // 힌트 텍스트 업데이트
+    const remaining = Math.ceil(total * 0.5) - done;
+    hint.textContent = remaining > 0
+      ? `💡 항목을 체크하며 정리하세요. ${remaining}개 더 완료하면 방 전체 사진으로 AI 인증을 받을 수 있어요.`
+      : '💡 50%에 도달했어요!';
+  }
+
+  // 완료 배너 (전체 인증 통과 후)
+  if (S.wholeVerifyDone && done === total) {
+    document.getElementById('done-banner').classList.add('on');
+    document.getElementById('tb-compare').classList.add('on');
+  }
+
+  // 체크리스트 아이템 — 클릭으로 토글만, 사진 인증 패널 없음
+  document.getElementById('cl-list').innerHTML = S.tasks.map((t, i) => `
+    <div class="cl-item ${t.done ? 'done' : ''}" id="cli-${i}" onclick="toggleTask(${i})" style="cursor:pointer">
+      <div class="cl-hd" style="cursor:pointer">
+        <div class="cl-chk ${t.done ? 'done' : ''}"><svg viewBox="0 0 11 11"><path d="M2 5.5L4.5 8L9 3"/></svg></div>
+        <div class="cl-tw">
+          <div class="cl-task ${t.done ? 'done' : ''}">${t.task}</div>
+          <div class="cl-meta">
+            <span>${t.area}</span><span>·</span><span>약 ${t.minutes}분</span>
+            ${t.done ? '<span class="sbadge sdone">완료</span>' : ''}
+          </div>
+        </div>
+        <span style="font-size:18px;color:${t.done ? 'var(--g)' : 'var(--tx3)'}">${t.done ? '✓' : '○'}</span>
+      </div>
+    </div>`).join('');
+}
+
+function toggleTask(i) {
+  // 전체 인증 완료 후엔 개별 토글 비활성화
+  if (S.wholeVerifyDone) return;
+  S.tasks[i].done = !S.tasks[i].done;
+  refreshCL();
+}
+
+function openWholeVerify() {
+  document.getElementById('fi-verify').click();
+}
+
+function openVerify(i) {
+  S.verifyTargetIdx = i;
+  document.getElementById('fi-verify').click();
+}
+
+// ═══════════════════════════════════════════
+//  전체 방 인증 (50% 달성 후)
+// ═══════════════════════════════════════════
+async function runWholeVerify(imgData) {
+  // UI — 슬롯에 사진 표시 + 로딩
+  const slot = document.getElementById('whole-verify-slot');
+  slot.innerHTML = `<img src="${imgData}" style="width:100%;height:100%;object-fit:cover;display:block"><span class="vslot-lbl">인증 사진</span>`;
+  document.getElementById('whole-verify-loading').style.display = 'flex';
+  document.getElementById('whole-verify-result').style.display = 'none';
+
+  if (S.apiKey.startsWith('sk-ant')) {
+    await realWholeVerify(imgData);
+  } else {
+    await mockWholeVerify();
+  }
+}
+
+async function realWholeVerify(imgData) {
+  const doneTasks = S.tasks.filter(t => t.done).map(t => t.task);
+  const base64 = imgData.split(',')[1];
+  const mediaType = imgData.split(';')[0].split(':')[1];
+
+  const contentBlocks = [];
+  if (S.beforeImg) {
+    const b64b = S.beforeImg.split(',')[1];
+    const mtb = S.beforeImg.split(';')[0].split(':')[1];
+    contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: mtb, data: b64b } });
+    contentBlocks.push({ type: 'text', text: '[첫 번째 사진: 정리 전 상태]' });
+  }
+  contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });
+
+  const taskList = doneTasks.map((t, i) => `${i+1}. ${t}`).join('\n');
+  contentBlocks.push({ type: 'text', text: `[두 번째 사진: 현재 방 상태 — 정리 진행 중]
+
+사용자가 아래 항목들을 완료했다고 표시했습니다:
+${taskList}
+
+## 판단 기준
+이 방 사진을 보고 위 항목들이 실제로 완료된 것으로 보이는지 종합 판단하세요.
+- pass: true → 사진에서 전반적인 정리 흔적이 보이고, 주요 항목들이 완료된 것이 확인될 때
+- pass: false → 여전히 어질러져 있거나 주요 항목이 완료되지 않은 것이 보일 때
+- 완료되지 않은 항목이 있다면 remainingTasks 배열에 명시하세요
+
+JSON만 반환:
+{"pass":true,"comment":"종합 피드백 2~3문장","remainingTasks":["아직 안 된 항목들"]}` });
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': S.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 600, messages: [{ role: 'user', content: contentBlocks }] }),
+    });
+    const data = await res.json();
+    const r = JSON.parse(data.content[0].text.replace(/```json|```/g, '').trim());
+    applyWholeVerify(r.pass, r.comment, r.remainingTasks || []);
+  } catch (e) {
+    applyWholeVerify(false, 'AI 분석 중 오류가 발생했어요. 다시 시도해 주세요.', []);
+  }
+}
+
+async function mockWholeVerify() {
+  await delay(2200);
+  const pass = Math.random() > 0.35;
+  if (pass) {
+    applyWholeVerify(true,
+      '방 전체적으로 정리가 잘 됐어요! 체크하신 항목들이 대부분 완료된 것이 확인됩니다. 나머지 항목도 마저 정리하면 완벽해질 것 같아요.',
+      []);
+  } else {
+    applyWholeVerify(false,
+      '아직 일부 구역이 정리되지 않은 것 같아요. 바닥과 책상 위를 조금 더 정돈한 후 다시 촬영해 주세요.',
+      ['바닥 물건 치우기', '책상 위 정리']);
+  }
+}
+
+function applyWholeVerify(pass, comment, remainingTasks) {
+  document.getElementById('whole-verify-loading').style.display = 'none';
+
+  const resultEl = document.getElementById('whole-verify-result');
+  resultEl.style.display = 'block';
+
+  if (pass) {
+    // 통과 — 모든 체크된 항목을 done 처리
+    S.wholeVerifyDone = true;
+    // 나머지 항목도 모두 완료
+    S.tasks.forEach(t => t.done = true);
+    // 비교 탭용 데이터 업데이트
+    S.tasks.forEach(t => { if (!t.verifyImg) t.verifyImg = S.wholeVerifyImg; });
+    updateCompare();
+
+    resultEl.innerHTML = `
+      <div style="background:var(--gd);border:1px solid rgba(74,222,128,.3);border-radius:var(--rads);padding:12px 14px">
+        <div style="font-size:11px;font-weight:700;color:var(--g);letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono);margin-bottom:4px">✓ 인증 통과</div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.6">${comment}</div>
+      </div>
+      <button class="btn btn-p" onclick="switchTab('compare')" style="margin-top:8px">
+        <svg viewBox="0 0 16 16"><rect x="1" y="3" width="6" height="10" rx="1.5"/><rect x="9" y="3" width="6" height="10" rx="1.5"/></svg>
+        전/후 비교 보기
+      </button>`;
+
+    // 배너 숨기고 완료 배너 표시
+    document.getElementById('photo-verify-banner').style.display = 'none';
+    document.getElementById('done-banner').classList.add('on');
+    document.getElementById('tb-compare').classList.add('on');
+
+  } else {
+    // 실패 — 재촬영 유도
+    const remainHtml = remainingTasks.length
+      ? `<div style="margin-top:8px;font-size:11px;color:var(--tx2)">아직 완료되지 않은 항목:<br>${remainingTasks.map(t => `• ${t}`).join('<br>')}</div>`
+      : '';
+
+    resultEl.innerHTML = `
+      <div style="background:var(--rd);border:1px solid rgba(248,113,113,.3);border-radius:var(--rads);padding:12px 14px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--r);letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono);margin-bottom:4px">✗ 재촬영 필요</div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.6">${comment}${remainHtml}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openWholeVerify()">
+        <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2"/><circle cx="8" cy="8" r="2.5"/><path d="M5.5 3L7 1h2l1.5 2"/></svg>
+        다시 촬영하기
+      </button>`;
+  }
+
+  refreshCL();
+}
+
+// ═══════════════════════════════════════════
+//  전/후 비교
+// ═══════════════════════════════════════════
+function updateCompare() {
+  const afterImg = S.wholeVerifyImg;
+  if (!S.beforeImg && !afterImg) return;
+  document.getElementById('cm-empty').style.display = 'none';
+  document.getElementById('cm-content').style.display = 'block';
+  if (S.beforeImg) document.getElementById('cm-before').src = S.beforeImg;
+  if (afterImg) document.getElementById('cm-after').src = afterImg;
+
+  // 완료된 항목 목록 표시
+  const done = S.tasks.filter(t => t.done);
+  document.getElementById('tc-list').innerHTML = done.length ? `
+    <div class="tc-card">
+      <div class="tc-hd"><span class="tc-title">전체 인증 완료 항목 (${done.length}개)</span><span class="tc-ok">인증됨</span></div>
+      <div class="tc-photos">
+        <div class="tc-ph">
+          ${S.beforeImg ? `<img src="${S.beforeImg}" alt="전"><span class="tc-lbl">정리 전</span>` : `<div style="height:88px;background:var(--bg3);border-radius:var(--rads);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx3)">없음</div>`}
+        </div>
+        <div class="tc-ph">
+          ${afterImg ? `<img src="${afterImg}" alt="후"><span class="tc-lbl">정리 후</span>` : `<div style="height:88px;background:var(--bg3);border-radius:var(--rads);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx3)">없음</div>`}
+        </div>
+      </div>
+      <div class="tc-note">${done.map(t => '✓ ' + t.task).join(' &nbsp;·&nbsp; ')}</div>
+    </div>` : '';
+
+  initSlider();
+}
+
+let slOk = false;
+function initSlider() {
+  if (slOk) return; slOk = true;
+  const wrap = document.getElementById('cmp-wrap');
+  const ov = document.getElementById('cm-ov');
+  const line = document.getElementById('cm-line');
+  const inp = document.getElementById('cm-sl');
+  const set = p => { ov.style.width = p + '%'; line.style.left = p + '%'; inp.value = p; };
+  inp.addEventListener('input', () => set(inp.value));
+  const drag = cx => { const r = wrap.getBoundingClientRect(); set(Math.min(95, Math.max(5, (cx - r.left) / r.width * 100))); };
+  wrap.addEventListener('mousedown', () => { const mv = e => drag(e.clientX); document.addEventListener('mousemove', mv); document.addEventListener('mouseup', () => document.removeEventListener('mousemove', mv), { once: true }); });
+  wrap.addEventListener('touchstart', () => { const mv = e => drag(e.touches[0].clientX); document.addEventListener('touchmove', mv, { passive: true }); document.addEventListener('touchend', () => document.removeEventListener('touchmove', mv), { once: true }); }, { passive: true });
+}
+
+// ═══════════════════════════════════════════
+//  유틸
+// ═══════════════════════════════════════════
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+let toastT = null;
+function toast(msg, err = false) {
+  let el = document.getElementById('_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_toast';
+    el.style.cssText = 'position:fixed;bottom:82px;left:50%;transform:translateX(-50%);padding:9px 16px;border-radius:20px;font-size:12px;font-weight:500;z-index:9999;pointer-events:none;transition:opacity .3s;white-space:nowrap;max-width:90%;text-align:center;font-family:var(--font)';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = err ? '#f87171' : '#4ade80';
+  el.style.color = err ? '#fff' : '#061206';
+  el.style.opacity = '1';
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.style.opacity = '0', 2600);
+}
+</script>
+</body>
+</html>
