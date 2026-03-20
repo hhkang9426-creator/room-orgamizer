@@ -245,25 +245,6 @@ body{font-family:var(--font);color:var(--tx)}
       <input type="file" id="fi-main" accept="image/*" capture="environment" style="display:none">
       <input type="file" id="fi-verify" accept="image/*" capture="environment" style="display:none">
 
-      <!-- API 키 카드 -->
-      <div class="api-card">
-        <div class="api-top">
-          <div class="mode-dot" id="mdot"></div>
-          <span class="mode-lbl" id="mlbl">목업 모드 — 박스 위치가 실제 사진과 다릅니다</span>
-        </div>
-        <div class="api-input-row">
-          <label>Anthropic API 키 (입력 시 실제 Claude Vision 분석)</label>
-          <input type="password" id="api-in" placeholder="sk-ant-api03-..." autocomplete="off">
-        </div>
-        <div class="api-notice mock" id="api-notice-mock">
-          지금은 <b style="color:var(--o)">목업 모드</b>입니다. 물건 박스 위치는 가짜 데이터라 업로드한 사진과 맞지 않아요.<br>
-          실제 분석: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> 가입 → API Keys → 무료 키 발급
-        </div>
-        <div class="api-notice real" id="api-notice-real" style="display:none">
-          ✓ Claude Vision이 사진을 직접 보고 실제 물건 위치에 박스를 그립니다.
-        </div>
-      </div>
-
       <!-- 업로드존 -->
       <div id="z-upload" class="upzone" onclick="document.getElementById('fi-main').click()">
         <div class="upzone-ic">
@@ -295,7 +276,7 @@ body{font-family:var(--font);color:var(--tx)}
         </div>
         <button class="btn btn-p" onclick="startAnalysis()" id="btn-analyze">
           <svg viewBox="0 0 16 16"><path d="M8 1L9 5H13L10 7.5L11 11.5L8 9L5 11.5L6 7.5L3 5H7Z"/></svg>
-          <span id="btn-analyze-txt">목업으로 체험하기</span>
+          AI 분석 시작
         </button>
       </div>
 
@@ -319,9 +300,6 @@ body{font-family:var(--font);color:var(--tx)}
         <!-- 어노테이션 사진 카드 -->
         <div class="card" style="padding:12px">
           <div class="ctitle">AI 분석 — 사진 위 물건 위치</div>
-          <div class="mock-warn" id="mock-warn">
-            ⚠️ <b>목업 모드</b> — 박스 위치는 임의 좌표입니다. API 키를 입력하면 Claude가 실제 사진을 보고 정확한 위치에 박스를 그립니다.
-          </div>
           <div class="anno-hint">
             <svg viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.5"/><line x1="6.5" y1="5" x2="6.5" y2="9"/><circle cx="6.5" cy="3.5" r=".6" fill="currentColor"/></svg>
             박스 또는 아래 목록을 탭하면 상세 정보가 표시됩니다
@@ -519,17 +497,7 @@ function switchTab(n) {
 // ═══════════════════════════════════════════
 //  API 키
 // ═══════════════════════════════════════════
-document.getElementById('api-in').addEventListener('input', function () {
-  S.apiKey = this.value.trim();
-  const ok = S.apiKey.startsWith('sk-ant');
-  document.getElementById('mdot').className = 'mode-dot' + (ok ? ' real' : '');
-  document.getElementById('mlbl').textContent = ok
-    ? 'Claude Vision 모드 — 사진을 직접 분석합니다'
-    : '목업 모드 — 박스 위치가 실제 사진과 다릅니다';
-  document.getElementById('api-notice-mock').style.display = ok ? 'none' : 'block';
-  document.getElementById('api-notice-real').style.display = ok ? 'block' : 'none';
-  document.getElementById('btn-analyze-txt').textContent = ok ? 'AI 분석 시작 (실제)' : '목업으로 체험하기';
-});
+
 
 // ═══════════════════════════════════════════
 //  파일 선택
@@ -579,25 +547,21 @@ function setBeforePhoto() {
 // ═══════════════════════════════════════════
 async function startAnalysis() {
   if (!S.mainImg) return;
-  S.apiKey = document.getElementById('api-in').value.trim();
-  const isReal = S.apiKey.startsWith('sk-ant');
-  S.isMock = !isReal;
+  S.isMock = false;
 
   document.getElementById('z-preview').style.display = 'none';
   document.getElementById('z-analyzing').style.display = 'block';
 
   const stepEl = document.getElementById('astep');
   const titleEl = document.getElementById('atitle');
-  titleEl.textContent = isReal ? 'Claude Vision 분석 중...' : '목업 모드로 체험 중...';
+  titleEl.textContent = 'Claude Vision 분석 중...';
 
-  const steps = isReal
-    ? ['이미지 압축 중...', 'Claude Vision 전송 중...', '물건 위치 감지 중...', '좌표 정밀 매핑 중...', '할 일 목록 생성 중...']
-    : ['목업 데이터 로드 중...', '가짜 분석 결과 준비 중...', '임의 박스 좌표 적용 중...'];
+  const steps = ['이미지 압축 중...', 'Claude Vision 전송 중...', '물건 위치 감지 중...', '좌표 정밀 매핑 중...', '할 일 목록 생성 중...'];
   let si = 0;
-  const stimer = setInterval(() => { si = (si + 1) % steps.length; stepEl.textContent = steps[si]; }, isReal ? 950 : 700);
+  const stimer = setInterval(() => { si = (si + 1) % steps.length; stepEl.textContent = steps[si]; }, 950);
 
   try {
-    const a = isReal ? await callClaude(S.mainImg, S.apiKey) : (await delay(1800), getMock());
+    const a = await callClaude(S.mainImg);
     clearInterval(stimer);
     S.analysis = a;
     S.tasks = a.checklist.map(t => ({ ...t, done: false, verifyImg: null, aiResult: null, verifying: false }));
@@ -620,7 +584,7 @@ async function startAnalysis() {
 // ═══════════════════════════════════════════
 //  Claude API 호출
 // ═══════════════════════════════════════════
-async function callClaude(imgData, apiKey) {
+async function callClaude(imgData) {
   const base64 = imgData.split(',')[1];
   const mediaType = imgData.split(';')[0].split(':')[1];
 
@@ -643,14 +607,9 @@ async function callClaude(imgData, apiKey) {
 {"summary":"방 상태 3문장","score":38,"items":[{"name":"물건명","location":"구체적 위치","suggestedPlace":"수납 위치","priority":"high","reason":"문제 이유","box":[x1,y1,x2,y2]}],"checklist":[{"task":"구체적 할일","area":"구역","minutes":5}],"priorityAreas":["구역1"]}
 items 최대 8개, checklist 최대 10개, 한국어.`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://steep-glade-8a66.hhkang9426.workers.dev', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-opus-4-5',
       max_tokens: 2000,
@@ -660,7 +619,7 @@ items 최대 8개, checklist 최대 10개, 한국어.`;
       ]}],
     }),
   });
-  if (!res.ok) throw new Error('API 오류 — 키를 확인해주세요');
+  if (!res.ok) throw new Error('분석 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
   const data = await res.json();
   const text = data.content[0].text.replace(/```json|```/g, '').trim();
   return parseClaude(JSON.parse(text));
@@ -722,7 +681,7 @@ function getMock() {
 function renderResult(a) {
   document.getElementById('re-empty').style.display = 'none';
   document.getElementById('re-content').style.display = 'block';
-  document.getElementById('mock-warn').className = 'mock-warn' + (S.isMock ? ' on' : '');
+
 
   // 어노테이션 이미지
   const img = document.getElementById('anno-img');
@@ -796,22 +755,6 @@ function drawAnnotations(items) {
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
   const W = cv.width, H = cv.height;
-
-  // 목업 워터마크
-  if (S.isMock) {
-    ctx.save();
-    ctx.font = 'bold 11px monospace';
-    ctx.fillStyle = 'rgba(251,146,60,0.45)';
-    ctx.textAlign = 'center';
-    ctx.translate(W/2, H/2);
-    ctx.rotate(-Math.PI / 8);
-    for (let ry = -H; ry < H; ry += 88) {
-      for (let rx = -W; rx < W; rx += 180) {
-        ctx.fillText('목업 데이터', rx, ry);
-      }
-    }
-    ctx.restore();
-  }
 
   items.forEach((item, i) => {
     if (!item.box) return;
@@ -957,9 +900,7 @@ function refreshCL() {
     <div class="cl-item ${t.done ? 'done' : ''}" id="cli-${i}" onclick="toggleTask(${i})" style="cursor:pointer">
       <div class="cl-hd" style="cursor:pointer">
         <div class="cl-chk ${t.done ? 'done' : ''}"><svg viewBox="0 0 11 11"><path d="M2 5.5L4.5 8L9 3"/></svg></div>
-        <div class="cl-tw">
-          <div class="cl-task ${t.done ? 'done' : ''}">${t.task}</div>
-          <div class="cl-meta">
+ <div class="cl-meta">
             <span>${t.area}</span><span>·</span><span>약 ${t.minutes}분</span>
             ${t.done ? '<span class="sbadge sdone">완료</span>' : ''}
           </div>
@@ -979,206 +920,3 @@ function toggleTask(i) {
 function openWholeVerify() {
   document.getElementById('fi-verify').click();
 }
-
-function openVerify(i) {
-  S.verifyTargetIdx = i;
-  document.getElementById('fi-verify').click();
-}
-
-// ═══════════════════════════════════════════
-//  전체 방 인증 (50% 달성 후)
-// ═══════════════════════════════════════════
-async function runWholeVerify(imgData) {
-  // UI — 슬롯에 사진 표시 + 로딩
-  const slot = document.getElementById('whole-verify-slot');
-  slot.innerHTML = `<img src="${imgData}" style="width:100%;height:100%;object-fit:cover;display:block"><span class="vslot-lbl">인증 사진</span>`;
-  document.getElementById('whole-verify-loading').style.display = 'flex';
-  document.getElementById('whole-verify-result').style.display = 'none';
-
-  if (S.apiKey.startsWith('sk-ant')) {
-    await realWholeVerify(imgData);
-  } else {
-    await mockWholeVerify();
-  }
-}
-
-async function realWholeVerify(imgData) {
-  const doneTasks = S.tasks.filter(t => t.done).map(t => t.task);
-  const base64 = imgData.split(',')[1];
-  const mediaType = imgData.split(';')[0].split(':')[1];
-
-  const contentBlocks = [];
-  if (S.beforeImg) {
-    const b64b = S.beforeImg.split(',')[1];
-    const mtb = S.beforeImg.split(';')[0].split(':')[1];
-    contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: mtb, data: b64b } });
-    contentBlocks.push({ type: 'text', text: '[첫 번째 사진: 정리 전 상태]' });
-  }
-  contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });
-
-  const taskList = doneTasks.map((t, i) => `${i+1}. ${t}`).join('\n');
-  contentBlocks.push({ type: 'text', text: `[두 번째 사진: 현재 방 상태 — 정리 진행 중]
-
-사용자가 아래 항목들을 완료했다고 표시했습니다:
-${taskList}
-
-## 판단 기준
-이 방 사진을 보고 위 항목들이 실제로 완료된 것으로 보이는지 종합 판단하세요.
-- pass: true → 사진에서 전반적인 정리 흔적이 보이고, 주요 항목들이 완료된 것이 확인될 때
-- pass: false → 여전히 어질러져 있거나 주요 항목이 완료되지 않은 것이 보일 때
-- 완료되지 않은 항목이 있다면 remainingTasks 배열에 명시하세요
-
-JSON만 반환:
-{"pass":true,"comment":"종합 피드백 2~3문장","remainingTasks":["아직 안 된 항목들"]}` });
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': S.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 600, messages: [{ role: 'user', content: contentBlocks }] }),
-    });
-    const data = await res.json();
-    const r = JSON.parse(data.content[0].text.replace(/```json|```/g, '').trim());
-    applyWholeVerify(r.pass, r.comment, r.remainingTasks || []);
-  } catch (e) {
-    applyWholeVerify(false, 'AI 분석 중 오류가 발생했어요. 다시 시도해 주세요.', []);
-  }
-}
-
-async function mockWholeVerify() {
-  await delay(2200);
-  const pass = Math.random() > 0.35;
-  if (pass) {
-    applyWholeVerify(true,
-      '방 전체적으로 정리가 잘 됐어요! 체크하신 항목들이 대부분 완료된 것이 확인됩니다. 나머지 항목도 마저 정리하면 완벽해질 것 같아요.',
-      []);
-  } else {
-    applyWholeVerify(false,
-      '아직 일부 구역이 정리되지 않은 것 같아요. 바닥과 책상 위를 조금 더 정돈한 후 다시 촬영해 주세요.',
-      ['바닥 물건 치우기', '책상 위 정리']);
-  }
-}
-
-function applyWholeVerify(pass, comment, remainingTasks) {
-  document.getElementById('whole-verify-loading').style.display = 'none';
-
-  const resultEl = document.getElementById('whole-verify-result');
-  resultEl.style.display = 'block';
-
-  if (pass) {
-    // 통과 — 모든 체크된 항목을 done 처리
-    S.wholeVerifyDone = true;
-    // 나머지 항목도 모두 완료
-    S.tasks.forEach(t => t.done = true);
-    // 비교 탭용 데이터 업데이트
-    S.tasks.forEach(t => { if (!t.verifyImg) t.verifyImg = S.wholeVerifyImg; });
-    updateCompare();
-
-    resultEl.innerHTML = `
-      <div style="background:var(--gd);border:1px solid rgba(74,222,128,.3);border-radius:var(--rads);padding:12px 14px">
-        <div style="font-size:11px;font-weight:700;color:var(--g);letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono);margin-bottom:4px">✓ 인증 통과</div>
-        <div style="font-size:12px;color:var(--tx2);line-height:1.6">${comment}</div>
-      </div>
-      <button class="btn btn-p" onclick="switchTab('compare')" style="margin-top:8px">
-        <svg viewBox="0 0 16 16"><rect x="1" y="3" width="6" height="10" rx="1.5"/><rect x="9" y="3" width="6" height="10" rx="1.5"/></svg>
-        전/후 비교 보기
-      </button>`;
-
-    // 배너 숨기고 완료 배너 표시
-    document.getElementById('photo-verify-banner').style.display = 'none';
-    document.getElementById('done-banner').classList.add('on');
-    document.getElementById('tb-compare').classList.add('on');
-
-  } else {
-    // 실패 — 재촬영 유도
-    const remainHtml = remainingTasks.length
-      ? `<div style="margin-top:8px;font-size:11px;color:var(--tx2)">아직 완료되지 않은 항목:<br>${remainingTasks.map(t => `• ${t}`).join('<br>')}</div>`
-      : '';
-
-    resultEl.innerHTML = `
-      <div style="background:var(--rd);border:1px solid rgba(248,113,113,.3);border-radius:var(--rads);padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--r);letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono);margin-bottom:4px">✗ 재촬영 필요</div>
-        <div style="font-size:12px;color:var(--tx2);line-height:1.6">${comment}${remainHtml}</div>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="openWholeVerify()">
-        <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2"/><circle cx="8" cy="8" r="2.5"/><path d="M5.5 3L7 1h2l1.5 2"/></svg>
-        다시 촬영하기
-      </button>`;
-  }
-
-  refreshCL();
-}
-
-// ═══════════════════════════════════════════
-//  전/후 비교
-// ═══════════════════════════════════════════
-function updateCompare() {
-  const afterImg = S.wholeVerifyImg;
-  if (!S.beforeImg && !afterImg) return;
-  document.getElementById('cm-empty').style.display = 'none';
-  document.getElementById('cm-content').style.display = 'block';
-  if (S.beforeImg) document.getElementById('cm-before').src = S.beforeImg;
-  if (afterImg) document.getElementById('cm-after').src = afterImg;
-
-  // 완료된 항목 목록 표시
-  const done = S.tasks.filter(t => t.done);
-  document.getElementById('tc-list').innerHTML = done.length ? `
-    <div class="tc-card">
-      <div class="tc-hd"><span class="tc-title">전체 인증 완료 항목 (${done.length}개)</span><span class="tc-ok">인증됨</span></div>
-      <div class="tc-photos">
-        <div class="tc-ph">
-          ${S.beforeImg ? `<img src="${S.beforeImg}" alt="전"><span class="tc-lbl">정리 전</span>` : `<div style="height:88px;background:var(--bg3);border-radius:var(--rads);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx3)">없음</div>`}
-        </div>
-        <div class="tc-ph">
-          ${afterImg ? `<img src="${afterImg}" alt="후"><span class="tc-lbl">정리 후</span>` : `<div style="height:88px;background:var(--bg3);border-radius:var(--rads);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx3)">없음</div>`}
-        </div>
-      </div>
-      <div class="tc-note">${done.map(t => '✓ ' + t.task).join(' &nbsp;·&nbsp; ')}</div>
-    </div>` : '';
-
-  initSlider();
-}
-
-let slOk = false;
-function initSlider() {
-  if (slOk) return; slOk = true;
-  const wrap = document.getElementById('cmp-wrap');
-  const ov = document.getElementById('cm-ov');
-  const line = document.getElementById('cm-line');
-  const inp = document.getElementById('cm-sl');
-  const set = p => { ov.style.width = p + '%'; line.style.left = p + '%'; inp.value = p; };
-  inp.addEventListener('input', () => set(inp.value));
-  const drag = cx => { const r = wrap.getBoundingClientRect(); set(Math.min(95, Math.max(5, (cx - r.left) / r.width * 100))); };
-  wrap.addEventListener('mousedown', () => { const mv = e => drag(e.clientX); document.addEventListener('mousemove', mv); document.addEventListener('mouseup', () => document.removeEventListener('mousemove', mv), { once: true }); });
-  wrap.addEventListener('touchstart', () => { const mv = e => drag(e.touches[0].clientX); document.addEventListener('touchmove', mv, { passive: true }); document.addEventListener('touchend', () => document.removeEventListener('touchmove', mv), { once: true }); }, { passive: true });
-}
-
-// ═══════════════════════════════════════════
-//  유틸
-// ═══════════════════════════════════════════
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-let toastT = null;
-function toast(msg, err = false) {
-  let el = document.getElementById('_toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = '_toast';
-    el.style.cssText = 'position:fixed;bottom:82px;left:50%;transform:translateX(-50%);padding:9px 16px;border-radius:20px;font-size:12px;font-weight:500;z-index:9999;pointer-events:none;transition:opacity .3s;white-space:nowrap;max-width:90%;text-align:center;font-family:var(--font)';
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.style.background = err ? '#f87171' : '#4ade80';
-  el.style.color = err ? '#fff' : '#061206';
-  el.style.opacity = '1';
-  clearTimeout(toastT);
-  toastT = setTimeout(() => el.style.opacity = '0', 2600);
-}
-</script>
-</body>
-</html>
